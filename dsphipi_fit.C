@@ -16,14 +16,6 @@ void dsphipi_fit()
     TH1F *h_tripletmass;
     h_tripletmass = (TH1F*)f->Get("StepByStep/Triplet/Mass triplet_cut8");
 
-    TFile *f2 = new TFile("AnalysedTree_2loose_DsPhiPi_Data2017C_sgn.root","READ");
-    TH1F *h_tripletmass_sign;
-    h_tripletmass_sign = (TH1F*)f2->Get("StepByStep/Triplet/Mass triplet_cut8");//7
-
-    TFile *f3 = new TFile("AnalysedTree_2loose_DsPhiPi_Data2017C_bkg.root","READ");
-    TH1F *h_tripletmass_bkg;
-    h_tripletmass_bkg = (TH1F*)f3->Get("StepByStep/Triplet/Mass triplet_cut8");//7
-
     // Declare observable x
     TCanvas *c5 = new TCanvas("c5","c5",150,10,990,660);
     c5->Update();
