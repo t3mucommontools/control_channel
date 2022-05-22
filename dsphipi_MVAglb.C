@@ -11,7 +11,6 @@
 #include <cmath>
 #include <iomanip>
 #include <sstream>
-#include "Control_common.h"
 
 using namespace RooFit;
 
@@ -30,7 +29,19 @@ void dsphipi_MVAglb()
     TString bdt_cutnos[] = {"0.1","0.47", "0.5385", "0.566", "0.583", "0.611", "0.624", "0.638", "0.6545", "0.8"};
 
     //set here list of bdt cuts
-    TString bdt_cutlist[] = {"MVA_glbmu2>="+bdt_cutnos[0]+" && MVA_glbmu2<"+bdt_cutnos[1],"MVA_glbmu2>="+bdt_cutnos[1]+" && MVA_glbmu2<"+bdt_cutnos[2], "MVA_glbmu2>="+bdt_cutnos[2]+" && MVA_glbmu2<"+bdt_cutnos[3], "MVA_glbmu2>="+bdt_cutnos[3]+" && MVA_glbmu2<"+bdt_cutnos[4], "MVA_glbmu2>="+bdt_cutnos[4]+" && MVA_glbmu2<"+bdt_cutnos[5], "MVA_glbmu2>="+bdt_cutnos[5]+" && MVA_glbmu2<"+bdt_cutnos[6], "MVA_glbmu2>="+bdt_cutnos[6]+" && MVA_glbmu2<"+bdt_cutnos[7], "MVA_glbmu2>="+bdt_cutnos[7]+" && MVA_glbmu2<"+bdt_cutnos[8], "MVA_glbmu2>="+bdt_cutnos[8]+" && MVA_glbmu2<"+bdt_cutnos[9]};
+    TString bdt_cutlist[] = {
+                              "MVA_glbmu2< "+bdt_cutnos[0],
+                              "MVA_glbmu2>="+bdt_cutnos[0]+" && MVA_glbmu2<"+bdt_cutnos[1],
+                              "MVA_glbmu2>="+bdt_cutnos[1]+" && MVA_glbmu2<"+bdt_cutnos[2],
+                              "MVA_glbmu2>="+bdt_cutnos[2]+" && MVA_glbmu2<"+bdt_cutnos[3],
+                              "MVA_glbmu2>="+bdt_cutnos[3]+" && MVA_glbmu2<"+bdt_cutnos[4],
+                              "MVA_glbmu2>="+bdt_cutnos[4]+" && MVA_glbmu2<"+bdt_cutnos[5],
+                              "MVA_glbmu2>="+bdt_cutnos[5]+" && MVA_glbmu2<"+bdt_cutnos[6],
+                              "MVA_glbmu2>="+bdt_cutnos[6]+" && MVA_glbmu2<"+bdt_cutnos[7],
+                              "MVA_glbmu2>="+bdt_cutnos[7]+" && MVA_glbmu2<"+bdt_cutnos[8],
+                              "MVA_glbmu2>="+bdt_cutnos[8]+" && MVA_glbmu2<"+bdt_cutnos[9],
+                              "MVA_glbmu2>="+bdt_cutnos[9],
+                             };
     int ncut = sizeof(bdt_cutlist)/sizeof(bdt_cutlist[0]);
     
     TString eta_cut = " && Etamu2<1.2";
@@ -55,8 +66,9 @@ void dsphipi_MVAglb()
     
     TH1F *h_tripletmass[ncut];//all data range with mva cut
     TH1F *h_tripletmass_mc[ncut];//peak MC range with mva cut
+
     TH1F *h_tripletmass_full;
-    TH1F *h_tripletmass_sign[ncut];//peak data range with mva cut
+    TH1F *h_tripletmass_mc_full;
 	
     Double_t events_SB = 0;
     TString binning_mass = "(62, 1.72, 2.01)";
@@ -64,6 +76,9 @@ void dsphipi_MVAglb()
 	
     Double_t lumi_full = 3.0; //fb
     TString run_lable = "2018";
+    Double_t xsection_mc = 1.06e10; //Ds Production Cross section
+    int N_MC = 2964234;  //Total number of events in MC sample
+    Double_t BR = 1.29e-5;  //Branching ratio Ds to Phi Pi
 
     TString common_cut = " && bs_sv_d2Dsig>2.0 && Ptmu3 > 1.2 && " 
                          "((Ptmu1>3.5 && Etamu1<1.2) || (Ptmu1>2.0 && Etamu1>=1.2 && Etamu1<=2.4)) && "
@@ -71,25 +86,16 @@ void dsphipi_MVAglb()
                          "abs(phiMass-1.02)<0.045 && "
                          "!(l1double_DoubleMu4_fired && !l1double_DoubleMu0_fired)";
 
-    TString invmass_SB   = "";
-    TString invmass_peak = "";
     TString invmass_all_data = "";
     TString invmass_peak_MC = "";
-    TString invmass_peak_data = "";
     
 	
     if(doPUrew){
         invmass_all_data  = "puFactor*(tripletMass<2.02 && tripletMass>1.62"+common_cut+eta_cut+" && isMC==0";
-        invmass_SB   = "puFactor*(tripletMass<1.80 && tripletMass>1.73"+common_cut+eta_cut+" && isMC==0";
-        invmass_peak = "puFactor*(tripletMass<2.01 && tripletMass>1.93"+common_cut+eta_cut+" && isMC==1";
         invmass_peak_MC = "puFactor*(tripletMass<2.01 && tripletMass>1.93"+common_cut+eta_cut+" && isMC==1";
-        invmass_peak_data = "puFactor*(tripletMass<2.01 && tripletMass>1.93"+common_cut+eta_cut+" && isMC==0";
     } else {
         invmass_all_data  = "(tripletMass<2.02 && tripletMass>1.62"+common_cut+eta_cut+" && isMC==0";
-        invmass_SB   = "(tripletMass<1.80 && tripletMass>1.73"+common_cut+eta_cut+" && isMC==0";
-        invmass_peak = "(tripletMass<2.01 && tripletMass>1.93"+common_cut+eta_cut+" && isMC==1";
         invmass_peak_MC = "(tripletMass<2.01 && tripletMass>1.93"+common_cut+eta_cut+" && isMC==1";
-        invmass_peak_data = "(tripletMass<2.01 && tripletMass>1.93"+common_cut+eta_cut+" && isMC==0";
     }
 
     //Fill histograms for each cut
@@ -102,18 +108,22 @@ void dsphipi_MVAglb()
         bdt_cut_label = bdt_cut_label.ReplaceAll(">", "_");
         bdt_cut_label = bdt_cut_label.ReplaceAll("<", "_");
     		
-        tin->Draw("tripletMass>>h_tripletmass["+s+"]"+binning_mass, invmass_all_data+bdt_cut);
+        tin->Draw("tripletMass>>h_tripletmass["+s+"]"+binning_mass, invmass_all_data+"&&"+bdt_cut+")");
         h_tripletmass[i]     = (TH1F *)gDirectory->Get("h_tripletmass["+s+"]");
         
-        tin->Draw("tripletMass>>h_tripletmass_sign["+s+"]"+binning_mass, invmass_peak_data+bdt_cut);
-        h_tripletmass_sign[i]     = (TH1F *)gDirectory->Get("h_tripletmass_sign["+s+"]");
-        
-        tin->Draw("tripletMass>>h_tripletmass_mc["+s+"]"+binning_mass, invmass_peak_MC+bdt_cut);
+        tin->Draw("tripletMass>>h_tripletmass_mc["+s+"]"+binning_mass, invmass_peak_MC+"&&"+bdt_cut+")");
         h_tripletmass_mc[i]     = (TH1F *)gDirectory->Get("h_tripletmass_mc["+s+"]");
         
         cout<<"Events passing selections "<<bdt_cutlist[i]<<" = "<<h_tripletmass[i]->GetEntries()<<endl;
     }
-	
+    //Fill histograms for full statistics
+    tin->Draw("tripletMass>>h_tripletmass_full"+binning_mass, invmass_all_data+")");
+    h_tripletmass_full     = (TH1F *)gDirectory->Get("h_tripletmass_full");
+    
+    tin->Draw("tripletMass>>h_tripletmass_mc_full"+binning_mass, invmass_peak_MC+")");
+    h_tripletmass_mc_full   = (TH1F *)gDirectory->Get("h_tripletmass_mc_full");
+
+    //Define roofit categories for simultaneous fit	
     std::map<std::string, TH1 *> hmap;
     RooCategory c("c", "c");
     for(int i = 0; i<ncut; i++){
@@ -237,15 +247,11 @@ void dsphipi_MVAglb()
         RooAbsReal* fsigregion_model = model[i]->createIntegral(x,NormSet(x),Range("signal")); 
         Double_t fs = fsigregion_model->getVal();
         Double_t fs_err = fsigregion_model->getPropagatedError(*r);
-        //fraction of total events in 1.70,1.80 (n_sideband_region_events/n_total_events)
-        RooAbsReal* fsidebandregion_model = model[i]->createIntegral(x,NormSet(x),Range("sideband")); 
 
         //fraction of background events in 1.93,2.01
         RooAbsReal* fsigregion_bkg = ((RooAbsPdf*)model[i]->getComponents()->find("bg_exp"))->createIntegral(x,NormSet(x),Range("signal")); 
         Double_t fb = fsigregion_bkg->getVal();
         Double_t fb_err = fsigregion_bkg->getPropagatedError(*r);
-        //fraction of background events in 1.70, 1.80 
-        RooAbsReal* fsidebandregion_bkg = ((RooAbsPdf*)model[i]->getComponents()->find("bg_exp"))->createIntegral(x,NormSet(x),Range("sideband")); 
 
         Dsyield_data[i] = fs * (nsig2[i]->getVal()+nsig1[i]->getVal()+nbkg[i]->getVal()) - fb*nbkg[i]->getVal();;
         Dsyield_data_err[i] = pow( pow(fs_err,2) * pow(nsig2[i]->getVal()+nsig1[i]->getVal()+nbkg[i]->getVal(),2)  + ( pow(nsig2[i]->getPropagatedError(*r),2)+pow(nsig1[i]->getPropagatedError(*r),2)+pow(nbkg[i]->getPropagatedError(*r),2)) * pow(fs,2) + pow(fb_err,2) * pow(nbkg[i]->getVal(),2) + pow(nbkg[i]->getPropagatedError(*r),2)*pow(fb,2) , 0.5);;
@@ -256,31 +262,14 @@ void dsphipi_MVAglb()
 
     //drawing triplet mass in MC for region mass selection and integral
     TCanvas *c3 = new TCanvas("c3","c3",150,10,990,660);
-    h_tripletmass_mc[0]->Draw();
+    h_tripletmass_mc_full->Draw();
     auto f1  = new TF1("f1","gaus",1.93,2.01);
-    h_tripletmass_mc[0]->Fit("f1", "R");
+    h_tripletmass_mc_full->Fit("f1", "R");
     f1->Draw("same");
     c3->Update();
     fout->WriteObject(c3,"3glb_invmass_mc");
-    Double_t n_mc_peak = f1->Integral(1.93, 2.01) / h_tripletmass_mc[0]->Integral(h_tripletmass_mc[0]->FindFixBin(1.93),h_tripletmass_mc[0]->FindFixBin(2.01),"width") * h_tripletmass_mc[0]->Integral(h_tripletmass_mc[0]->FindFixBin(1.93),h_tripletmass_mc[0]->FindFixBin(2.01));
-
-    for(int i = 0; i<ncut; i++){
-        //cout<<"n_mc_peak "<<n_mc_peak<<endl;
-        //cout<<"scaled to lumi: "<<n_mc_peak*lumi[i]*xsection_mc*BR/N_MC<<endl;
-        Dsyield_MC[i] = 0.90*h_tripletmass_mc[i]->GetEntries()*lumi_full*xsection_mc*BR/N_MC;
-        //Dsyield_MC[i] = h_tripletmass_mc[i]->GetEntries();
-        Dsyield_MC_err[i] = sqrt(0.90*h_tripletmass_mc[i]->GetEntries())*(lumi_full*xsection_mc*BR/N_MC); 
-        //Dsyield_MC_err[i] = (f1->IntegralError(1.93, 2.01))*(lumi[i]*xsection_mc*BR/N_MC); 
-        //Dsyield_MC[i] = h_tripletmass_mc[0]->GetEntries();
-
-        fout_yield<<Dsyield_data[i]<<"\t"<<Dsyield_data_err[i]<<"\n";
-
-        cout<<"\n"<<bdt_cutlist[i]<<" lumi="<<lumi_full<<endl;
-        cout<<"=================\noverall data/MC scale factor:"<<endl;
-        cout<<"data: "<<Dsyield_data[i]<<" +- "<<Dsyield_data_err[i]<<"\n";
-        cout<<"MC: "<<Dsyield_MC[i]<<" +- "<<Dsyield_MC_err[i]<<endl;
-        cout<<"scale factor: "<<Dsyield_data[i]/Dsyield_MC[i]<<" +- "<<sqrt(pow((Dsyield_data_err[i]/Dsyield_MC[i]),2.0) + pow((Dsyield_data[i]/(Dsyield_MC[i]*Dsyield_MC[i]))*Dsyield_MC_err[i],2.0))<<endl;
-    }
+    //Integrals MC
+    Double_t n_mc_peak = f1->Integral(1.93, 2.01) / h_tripletmass_mc_full->Integral(h_tripletmass_mc_full->FindFixBin(1.93),h_tripletmass_mc_full->FindFixBin(2.01),"width") * h_tripletmass_mc_full->Integral(h_tripletmass_mc_full->FindFixBin(1.93),h_tripletmass_mc_full->FindFixBin(2.01));
 
     //After fitting, set parameters to constant
     mass1.setConstant(kTRUE);
@@ -321,7 +310,7 @@ void dsphipi_MVAglb()
     std::stringstream stream_lumi;
     stream_lumi << std::fixed << std::setprecision(1) << lumi_full;
     TString strLumi = stream_lumi.str();
-    TLatex* text_lumi = new TLatex(0.10,0.91, "\n\\text{data }"+run_lable_full+"\n\\text{    }\n\\mathscr{L}="+strLumi+"\\text{fb}^{-1}");
+    TLatex* text_lumi = new TLatex(0.10,0.91, "\n\\text{data }"+run_lable+"\n\\text{    }\n\\mathscr{L}="+strLumi+"\\text{fb}^{-1}");
     text_lumi->SetTextSize(0.05);
     text_lumi->SetNDC(kTRUE);
     text_lumi->Draw("same");
@@ -332,6 +321,55 @@ void dsphipi_MVAglb()
     std::string strChi2 = stream_chi2.str();
     TString chi2tstring = "\\chi^{2}\\text{/NDOF} = "+strChi2;
     TLatex* text_chi2 = new TLatex(0.20,0.74, chi2tstring);
+
+    TLatex* cmslabel = new TLatex(0.20,0.81, "#bf{CMS Preliminary}");
+    cmslabel->SetNDC(kTRUE);
+    cmslabel->Draw("same");
+
+    fout->WriteObject(c5,"full");
+    c5->SaveAs("dsphipi_fit_perMVA_new_full.png");
+
+    //Integrals data
+    //fraction of total events in 1.93,2.01 (n_signal_region_events/n_total_events)
+    RooAbsReal* fsigregion_model = model_full->createIntegral(x,NormSet(x),Range("signal")); 
+    Double_t fs = fsigregion_model->getVal();
+    Double_t fs_err = fsigregion_model->getPropagatedError(*r_full);
+
+    //fraction of background events in 1.93,2.01
+    RooAbsReal* fsigregion_bkg = ((RooAbsPdf*)model_full->getComponents()->find("bg_exp"))->createIntegral(x,NormSet(x),Range("signal")); 
+    Double_t fb = fsigregion_bkg->getVal();
+    Double_t fb_err = fsigregion_bkg->getPropagatedError(*r);
+
+    Double_t Dsyield_data_full = fs * (nsig2_full->getVal()+nsig1_full->getVal()+nbkg_full->getVal()) - fb*nbkg_full->getVal();;
+    Double_t Dsyield_data_err_full = pow( pow(fs_err,2) * pow(nsig2_full->getVal()+nsig1_full->getVal()+nbkg_full->getVal(),2)  + ( pow(nsig2_full->getPropagatedError(*r),2)+pow(nsig1_full->getPropagatedError(*r),2)+pow(nbkg_full->getPropagatedError(*r),2)) * pow(fs,2) + pow(fb_err,2) * pow(nbkg_full->getVal(),2) + pow(nbkg_full->getPropagatedError(*r),2)*pow(fb,2) , 0.5);;
+
+    Double_t Bkgyield_data_full = fb*nbkg_full->getVal();
+    Double_t Bkgyield_data_err_full = sqrt( pow(fb_err, 2.0) * pow(nbkg_full->getVal(), 2.0) + pow(fb, 2.0) * pow(nbkg_full->getPropagatedError(*r), 2.0));
+    //cout<<"n_mc_peak "<<n_mc_peak<<endl;
+    Double_t Dsyield_MC_full = n_mc_peak*lumi_full*xsection_mc*BR/N_MC;
+    Double_t Dsyield_MC_err_full = sqrt(n_mc_peak)*(lumi_full*xsection_mc*BR/N_MC); 
+
+    cout<<"\n"<<run_lable<<" lumi="<<lumi_full<<endl;
+    cout<<"=================\noverall data/MC scale factor:"<<endl;
+    cout<<"data: "<<Dsyield_data_full<<" +- "<<Dsyield_data_err_full<<"\n";
+    cout<<"MC: "<<Dsyield_MC_full<<" +- "<<Dsyield_MC_err_full<<endl;
+    cout<<"scale factor: "<<Dsyield_data_full/Dsyield_MC_full<<" +- "<<sqrt(pow((Dsyield_data_err_full/Dsyield_MC_full),2.0) + pow((Dsyield_data_full/(Dsyield_MC_full*Dsyield_MC_full))*Dsyield_MC_err_full,2.0))<<endl;
+   
+    //overall SF to be applied
+    Double_t SF_total = Dsyield_data_full/Dsyield_MC_full; 
+
+    for(int i = 0; i<ncut; i++){
+        Dsyield_MC[i] = SF_total*h_tripletmass_mc[i]->GetEntries()*lumi_full*xsection_mc*BR/N_MC;
+        Dsyield_MC_err[i] = sqrt(SF_total*h_tripletmass_mc[i]->GetEntries())*(lumi_full*xsection_mc*BR/N_MC); 
+
+        fout_yield<<Dsyield_data[i]<<"\t"<<Dsyield_data_err[i]<<"\n";
+
+        cout<<"\n"<<bdt_cutlist[i]<<" lumi="<<lumi_full<<endl;
+        cout<<"=================\noverall data/MC scale factor:"<<endl;
+        cout<<"data: "<<Dsyield_data[i]<<" +- "<<Dsyield_data_err[i]<<"\n";
+        cout<<"MC: "<<Dsyield_MC[i]<<" +- "<<Dsyield_MC_err[i]<<endl;
+        cout<<"scale factor: "<<Dsyield_data[i]/Dsyield_MC[i]<<" +- "<<sqrt(pow((Dsyield_data_err[i]/Dsyield_MC[i]),2.0) + pow((Dsyield_data[i]/(Dsyield_MC[i]*Dsyield_MC[i]))*Dsyield_MC_err[i],2.0))<<endl;
+    }
 return;
  
 }
