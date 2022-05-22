@@ -281,6 +281,57 @@ void dsphipi_MVAglb()
         cout<<"MC: "<<Dsyield_MC[i]<<" +- "<<Dsyield_MC_err[i]<<endl;
         cout<<"scale factor: "<<Dsyield_data[i]/Dsyield_MC[i]<<" +- "<<sqrt(pow((Dsyield_data_err[i]/Dsyield_MC[i]),2.0) + pow((Dsyield_data[i]/(Dsyield_MC[i]*Dsyield_MC[i]))*Dsyield_MC_err[i],2.0))<<endl;
     }
+
+    //After fitting, set parameters to constant
+    mass1.setConstant(kTRUE);
+    mass2.setConstant(kTRUE);
+    sigma1.setConstant(kTRUE);
+    sigma2.setConstant(kTRUE);
+    n1.setConstant(kTRUE);
+    n2.setConstant(kTRUE);
+    alpha1.setConstant(kTRUE);
+    alpha2.setConstant(kTRUE);
+    a.setConstant(kTRUE);
+    //create model for full dataset
+    Int_t entries = h_tripletmass_full->GetEntries(); //reference for normalisation variables
+    RooRealVar* nsig2_full = new RooRealVar("nsig2_full","#signal2 events",int(entries/4),5,int(entries/2));
+    RooRealVar* nsig1_full = new RooRealVar("nsig1_full","#signal1 events",int(entries/4),5,int(entries/2));
+    RooRealVar* nbkg_full = new RooRealVar("nbkg_full","#background events",int(entries/2),5,entries);
+    RooAddPdf* model_full = new RooAddPdf("model_full","model_full",RooArgList(signal_CB1,signal_CB2,bg_exp),RooArgList(*nsig1_full,*nsig2_full,*nbkg_full));
+    //fit full dataset
+    RooDataHist dh_full("dh_full", "dh_full", x, Import(*h_tripletmass_full));
+    RooFitResult * r_full = model_full->fitTo(dh_full, Save(true));
+    
+    // Make plot of binned dataset showing Poisson error bars (RooFit default)
+    c5->cd();
+    RooPlot* frame_full = x.frame(Title(" "));
+    dh_full.plotOn(frame_full, Name("dh_full"));
+    model_full->plotOn(frame_full, Name("model_full"));
+    model_full->plotOn(frame_full, Components(bg_exp), LineColor(kGreen), LineStyle(kDashed));
+    model_full->plotOn(frame_full, Components(RooArgSet(signal_CB2, signal_CB1)), LineColor(kRed), LineStyle(kDashed) );
+    frame_full->Draw();
+    //Chi2
+    cout<<"frame_full->chiSquare() "<<frame_full->chiSquare("model_full", "dh_full", r_full->floatParsFinal().getSize())<<endl;
+    RooChi2Var chi2("chi2","chi2",*model_full,dh_full);
+    int NDOF = n_bins-r_full->floatParsFinal().getSize();
+    cout << "NDOF = " << n_bins << "-" <<r_full->floatParsFinal().getSize()<<" = "<<NDOF<<endl;
+    cout << "chi2.getVal()/NDOF = " << chi2.getVal()/NDOF << endl ;
+        
+    //add Lumi and Chi2 to plot
+    std::stringstream stream_lumi;
+    stream_lumi << std::fixed << std::setprecision(1) << lumi_full;
+    TString strLumi = stream_lumi.str();
+    TLatex* text_lumi = new TLatex(0.10,0.91, "\n\\text{data }"+run_lable_full+"\n\\text{    }\n\\mathscr{L}="+strLumi+"\\text{fb}^{-1}");
+    text_lumi->SetTextSize(0.05);
+    text_lumi->SetNDC(kTRUE);
+    text_lumi->Draw("same");
+
+    Double_t Chi2 = chi2.getVal()/NDOF;
+    std::stringstream stream_chi2;
+    stream_chi2 << std::fixed << std::setprecision(2) << Chi2;
+    std::string strChi2 = stream_chi2.str();
+    TString chi2tstring = "\\chi^{2}\\text{/NDOF} = "+strChi2;
+    TLatex* text_chi2 = new TLatex(0.20,0.74, chi2tstring);
 return;
  
 }
