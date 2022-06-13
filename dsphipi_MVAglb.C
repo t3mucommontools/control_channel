@@ -26,9 +26,39 @@ void dsphipi_MVAglb()
     TFile *fout = new TFile("plots_MVAcut/dsphipi_MVAglb_2018_output.root", "RECREATE");
     fout->cd();
     
-    TString bdt_cutnos[] = {"0.1","0.47", "0.5385", "0.566", "0.583", "0.611", "0.624", "0.638", "0.6545", "0.8"};
-
+    int which_etabin = 2;//1: barrel, 2:endcap
+    
+    double var1[] = {0.1,0.4923006110959513, 0.5455163849321435, 0.5730349693060042, 0.5914112659665561, 0.6059067175111235, 0.6189446035998146, 0.632173409781683, 0.6473556487452039, 0.8};
+    double var2[] = {0.1,0.45181370757498557, 0.5270851557601994, 0.5659762808285009, 0.5921869205884969, 0.6120031514308787, 0.6302197424370184, 0.6467464046499862, 0.6645164107599887, 0.8};
+    double var3[] = {0.0,1.2, 2.4};
+    
+    TFile *fout0 = new TFile("dsphipi_MVAglb2_2018_output.root", "UPDATE");
+    //TFile *fout0 = new TFile("dsphipi_MVAglb2_2018_output.root", "RECREATE");
+    //TH1D *SF_mva1 = new TH1D("SF_mva1", "SF vs MVA", 9, var1 ) ;
+    //TH1D *SF_mva2 = new TH1D("SF_mva2", "SF vs MVA", 9, var2 ) ;
+    TH1D *SF_mva1 = ((TH1D*) fout0->Get("SF_mva1"));
+    TH1D *SF_mva2 = ((TH1D*) fout0->Get("SF_mva2"));
+    
+    TString bdt_cutnos1[] = {"0.1","0.4923006110959513", "0.5455163849321435", "0.5730349693060042", "0.5914112659665561", "0.6059067175111235", "0.6189446035998146", "0.632173409781683", "0.6473556487452039", "0.8"};
+    TString bdt_cutnos2[] = {"0.1","0.45181370757498557", "0.5270851557601994", "0.5659762808285009", "0.5921869205884969", "0.6120031514308787", "0.6302197424370184", "0.6467464046499862", "0.6645164107599887", "0.8"};
+    
+    int no_bin = (which_etabin==1)?11:5;
+    
+    TString bdt_cutnos[10];
+    TString eta_cut;
+    
+    if(which_etabin==1){
+      copy(begin(bdt_cutnos1), end(bdt_cutnos1), begin(bdt_cutnos));
+      eta_cut = " && abs(Etamu2)<1.2";
+    }
+    else if(which_etabin==2){
+      copy(begin(bdt_cutnos2), end(bdt_cutnos2), begin(bdt_cutnos));
+      eta_cut = " && abs(Etamu2)>=1.2";
+    }
+    
     //set here list of bdt cuts
+    
+    
     TString bdt_cutlist[] = {
                               "MVA_glbmu2< "+bdt_cutnos[0],
                               "MVA_glbmu2>="+bdt_cutnos[0]+" && MVA_glbmu2<"+bdt_cutnos[1],
@@ -42,10 +72,28 @@ void dsphipi_MVAglb()
                               "MVA_glbmu2>="+bdt_cutnos[8]+" && MVA_glbmu2<"+bdt_cutnos[9],
                               "MVA_glbmu2>="+bdt_cutnos[9],
                              };
-    int ncut = sizeof(bdt_cutlist)/sizeof(bdt_cutlist[0]);
+                             
+    //TString bdt_cutlist00[] = bdt_cutlist;
     
-    TString eta_cut = " && Etamu2<1.2";
-    //TString eta_cut = " && Etamu2>=1.2";
+    /*
+    TString bdt_cutlist2[] = {
+                              "MVA_glbmu2< "+bdt_cutnos[0],
+                              "MVA_glbmu2>="+bdt_cutnos[0]+" && MVA_glbmu2<"+bdt_cutnos[3],
+                              "MVA_glbmu2>="+bdt_cutnos[3]+" && MVA_glbmu2<"+bdt_cutnos[6],
+                              "MVA_glbmu2>="+bdt_cutnos[6]+" && MVA_glbmu2<"+bdt_cutnos[9],
+                              "MVA_glbmu2>="+bdt_cutnos[9],
+                             };
+                             
+    TString bdt_cutlist[5];
+    if(which_etabin==1){
+      copy(begin(bdt_cutlist1), end(bdt_cutlist1), begin(bdt_cutlist));
+    }
+    else if(which_etabin==2){
+      copy(begin(bdt_cutlist2), end(bdt_cutlist2), begin(bdt_cutlist));
+    }
+    */
+    
+    int ncut = sizeof(bdt_cutlist)/sizeof(bdt_cutlist[0]);
 
     cout<<"Size of ncut: "<<ncut<<endl;
     
@@ -59,7 +107,7 @@ void dsphipi_MVAglb()
     Double_t Dsyield_MC_err[ncut];
     Double_t Bkgyield_data[ncut];
     Double_t Bkgyield_data_err[ncut];
-  
+    
     TFile *fin = new TFile("MVAmu_control_2018_outputTree.root", "READ");
     cout<<"opened input file MVAmu_control_2018_outputTree.root"<<endl;
     TTree *tin = (TTree*)fin->Get("outputTree");
@@ -140,19 +188,29 @@ void dsphipi_MVAglb()
 
     // Construct a simultaneous pdf using category "c" as index
     RooSimultaneous simPdf("simPdf", "simultaneous pdf", c);
-
+    
+    
     //set ranges
+    /*
     x.setRange("R1",1.825,1.89); //first peak D+(1.87GeV)
     x.setRange("R2",1.93,2.01); //second peak Ds(1.97)
     x.setRange("R3",1.72,1.815); //background    
     x.setRange("R4",1.90,1.925); //background    
     x.setRange("R5",1.995,2.01); //background    
-    x.setRange("R6",1.72,2.01); //full range    
+    x.setRange("R6",1.72,2.01); //full range   
+    
 
     RooRealVar mass2("mass2","Central value of Gaussian",1.965,1.94,2.0);
     RooRealVar sigma2("sigma2","Width of Gaussian",0.01,0.0001,0.06);
     RooRealVar mass1("mass1","Central value of Gaussian",1.87,1.85,1.89);
     RooRealVar sigma1("sigma1","Width of Gaussian",0.01,0.0003,0.3);
+    */
+    
+    
+    
+    
+    
+    /*
 
     // Fit a Crystal ball p.d.f to the data
     RooRealVar alpha2("alpha2","alpha value CB",1.5,-20,20);
@@ -168,6 +226,37 @@ void dsphipi_MVAglb()
     RooRealVar a("a", "a", -5, -20, 0.0);
     RooExponential bg_exp("bg_exp", "bg_exp", x, a);
     bg_exp.fitTo(dh, Range("R3,R4"));
+    */
+    
+    //x.setRange("R3",1.72,1.79); //background  
+    //x.setRange("R4",1.906,1.919); //background 
+    //RooRealVar mass1("mass1","Central value of Gaussian",1.86774,1.80,1.905);
+    //RooRealVar mass2("mass2","Central value of Gaussian",1.96724,1.920,2.01);
+    
+    x.setRange("R3",1.72,1.825); //background    
+    x.setRange("R4",1.90,1.925); //background    
+    x.setRange("R5",2.0,2.01); //background 
+    
+    // Fit a Crystal ball p.d.f to the data
+    RooRealVar mass1("mass1","Central value of Gaussian",1.86774,1.80,1.929);
+    RooRealVar sigma1("sigma1","Width of Gaussian",0.01,0.0003,2.0);
+    
+    RooRealVar alpha1("alpha1","alpha value CB",1.9,0.0,3.0);
+    RooRealVar n1("n1", "n1", 2, 0, 10);
+    RooCBShape signal_CB1("cb1", "The signal distribution", x, mass1, sigma1, alpha1, n1); 
+    
+    // Fit a Crystal ball p.d.f to the data
+    RooRealVar mass2("mass2","Central value of Gaussian",1.96724,1.930,2.01);
+    RooRealVar sigma2("sigma2","Width of Gaussian",0.01,0.0001,2.0);
+    
+    RooRealVar alpha2("alpha2","alpha value CB",1.9,0.0,3.0);
+    RooRealVar n2("n2", "n2", 2, 0, 20);
+    RooCBShape signal_CB2("cb2", "The signal distribution", x, mass2, sigma2, alpha2, n2); 
+       
+    // Fit an exponential to the background
+    RooRealVar a("a", "a", -5, -20, 0.0);
+    RooExponential bg_exp("bg_exp", "bg_exp", x, a);
+    bg_exp.fitTo(dh, Range("R3,R4,R5"));
 
     // Combine the models
     // relative contributions of background and signal will depend on category
@@ -182,7 +271,7 @@ void dsphipi_MVAglb()
         Int_t entries = h_tripletmass[i]->GetEntries(); //reference for normalisation variables
         nsig2[i] = new RooRealVar("nsig2_"+category,"#signal2 events",int(entries/4),5,int(entries/2)); 
         nsig1[i] = new RooRealVar("nsig1_"+category,"#signal1 events",int(entries/4),5,int(entries/2)); 
-        nbkg[i] = new RooRealVar("nbkg_"+category,"#bkacground events",int(entries/2),5,entries);
+        nbkg[i] = new RooRealVar("nbkg_"+category,"#background events",int(entries/2),5,entries);
         model[i] = new RooAddPdf("model_"+category,"g+a",RooArgList(signal_CB1,signal_CB2,bg_exp),RooArgList(*nsig1[i],*nsig2[i],*nbkg[i]));
         simPdf.addPdf(*model[i], category);
     }
@@ -197,6 +286,10 @@ void dsphipi_MVAglb()
     c5->SetLeftMargin(0.15);
     c5->Update();
 
+    /*
+    x.setRange("signal",1.93,2.01);
+    x.setRange("sideband",1.72,1.8);
+    */
     x.setRange("signal",1.93,2.01);
     x.setRange("sideband",1.72,1.8);
 
@@ -211,6 +304,9 @@ void dsphipi_MVAglb()
         simPdf.plotOn(frame, Slice(c, category), ProjWData(c, dh), Name("model_"+category), Range("chi2"));
         simPdf.plotOn(frame, Slice(c, category), Components(bg_exp), LineColor(kGreen), LineStyle(kDashed), ProjWData(c, dh));
         //simPdf.plotOn(frame, Slice(c, category), Components(signal_CB2, signal_CB1), LineColor(kRed), LineStyle(kDashed), ProjWData(c, dh));
+        //simPdf.plotOn(frame, Slice(c, category), Components(RooArgSet(signal_CB2, signal_CB1)), LineColor(kRed), LineStyle(kDashed), ProjWData(c, dh));
+        simPdf.plotOn(frame, Slice(c, category), Components(RooArgSet(signal_CB1)), LineColor(kRed), LineStyle(kDashed), ProjWData(c, dh));
+        simPdf.plotOn(frame, Slice(c, category), Components(RooArgSet(signal_CB2)), LineColor(kPink), LineStyle(kDashed), ProjWData(c, dh));
         //simPdf.paramOn(frame,Layout(0.12, 0.4, 0.9));
         frame->Draw();
         
@@ -297,7 +393,9 @@ void dsphipi_MVAglb()
     dh_full.plotOn(frame_full, Name("dh_full"));
     model_full->plotOn(frame_full, Name("model_full"));
     model_full->plotOn(frame_full, Components(bg_exp), LineColor(kGreen), LineStyle(kDashed));
-    model_full->plotOn(frame_full, Components(RooArgSet(signal_CB2, signal_CB1)), LineColor(kRed), LineStyle(kDashed) );
+    //model_full->plotOn(frame_full, Components(RooArgSet(signal_CB2, signal_CB1)), LineColor(kRed), LineStyle(kDashed) );
+    model_full->plotOn(frame_full, Components(RooArgSet(signal_CB1)), LineColor(kRed), LineStyle(kDashed) );
+    model_full->plotOn(frame_full, Components(RooArgSet(signal_CB2)), LineColor(kPink), LineStyle(kDashed) );
     frame_full->Draw();
     //Chi2
     cout<<"frame_full->chiSquare() "<<frame_full->chiSquare("model_full", "dh_full", r_full->floatParsFinal().getSize())<<endl;
@@ -368,8 +466,25 @@ void dsphipi_MVAglb()
         cout<<"=================\noverall data/MC scale factor:"<<endl;
         cout<<"data: "<<Dsyield_data[i]<<" +- "<<Dsyield_data_err[i]<<"\n";
         cout<<"MC: "<<Dsyield_MC[i]<<" +- "<<Dsyield_MC_err[i]<<endl;
-        cout<<"scale factor: "<<Dsyield_data[i]/Dsyield_MC[i]<<" +- "<<sqrt(pow((Dsyield_data_err[i]/Dsyield_MC[i]),2.0) + pow((Dsyield_data[i]/(Dsyield_MC[i]*Dsyield_MC[i]))*Dsyield_MC_err[i],2.0))<<endl;
+        double SF = Dsyield_data[i]/Dsyield_MC[i];
+        double SF_err = sqrt(pow((Dsyield_data_err[i]/Dsyield_MC[i]),2.0) + pow((Dsyield_data[i]/(Dsyield_MC[i]*Dsyield_MC[i]))*Dsyield_MC_err[i],2.0));
+        cout<<"scale factor: "<<SF<<" +- "<<SF_err<<endl;
+        if(i>0&&i<10&&which_etabin==1){
+          SF_mva1->SetBinContent(i,SF);
+          SF_mva1->SetBinError(i,SF_err);
+        }
+        if(i>0&&i<10&&which_etabin==2){
+          SF_mva2->SetBinContent(i,SF);
+          SF_mva2->SetBinError(i,SF_err);
+        }
     }
-return;
+    fout->Close();
+    
+    fout0->cd();
+    SF_mva1->Write("",TObject::kOverwrite);
+    SF_mva2->Write("",TObject::kOverwrite);
+    //SF_eta_mva->Write();
+    fout0->Close();
+    return;
  
 }
