@@ -125,7 +125,7 @@ void dsphipi_MVAglb()
     Double_t lumi_full = 3.0; //fb
     TString run_lable = "2018";
     Double_t xsection_mc = 1.06e10; //Ds Production Cross section
-    int N_MC = 327675;  //Total number of events in MC sample 2964234 327675
+    int N_MC = 2964234;  //Total number of events in MC sample 2964234 327675
     Double_t BR = 1.29e-5;  //Branching ratio Ds to Phi Pi
 
     TString common_cut = " && bs_sv_d2Dsig>2.0 && mu3_pt > 1.2 && " 
