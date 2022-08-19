@@ -40,16 +40,25 @@ void dsphipi_MVAglb()
     h_MVAmu2_prelim = (TH1F *)gDirectory->Get("h_MVAmu2_prelim");
     Int_t nbins = 8;
     Double_t edges[nbins+1];
+    TString edges_s[nbins+1];
     Double_t proba[nbins+1];
     //compute x values corresponding to evenly distributed probabilities
     for (int i=0; i<nbins+1; i++) proba[i] = float(i)/float(nbins);
     h_MVAmu2_prelim->GetQuantiles(nbins+1, edges, proba);
 
+    for (int i=0; i<nbins+1; i++){
+        stringstream ss;
+        ss << setprecision(3)<< edges[i];
+        edges_s[i] = ss.str();
+    }
     //set here list of MVA cuts
     TString bdt_cutlist[nbins];
+    TString bdt_cutlabels[nbins];
     for (int i=0; i<nbins; i++){
         bdt_cutlist[i] = var+"<="+edges[i+1]+"&&"+var+">"+edges[i];
         cout<<bdt_cutlist[i]<<endl;
+        bdt_cutlabels[i] = "MVAglb_mu2 ["+edges_s[i+1]+"; "+edges_s[i]+"]";
+        cout<<bdt_cutlabels[i]<<endl;
     }
     int ncut = sizeof(bdt_cutlist)/sizeof(bdt_cutlist[0]);
     cout<<"Size of ncut: "<<ncut<<endl;
@@ -68,6 +77,7 @@ void dsphipi_MVAglb()
     //output histograms
     TH1D *SF_mva1 = new TH1D("SF_mva1", "SF vs MVA", ncut, 0.1, 0.8 ) ;
     TH1D *SF_mva2 = new TH1D("SF_mva2", "SF vs MVA", ncut, 0.1, 0.8 ) ;
+    TH2D *SF_mva  = new TH2D("SF_mva",  "SF vs MVA-eta", ncut, 0.1, 0.8, 2, 0, 2.4) ;
 
     //yields     
     Double_t Dsyield_data[ncut];
@@ -153,7 +163,6 @@ void dsphipi_MVAglb()
         
         // Fit a Crystal ball p.d.f to the data
         RooRealVar mass1("mass1","Central value of Gaussian",1.86774,1.75,2.01);
-        //RooRealVar sigma1("sigma1","Width of Gaussian",0.01,0.0001,0.3);
         RooRealVar sigma1("sigma1","Width of Gaussian",0.01,0.0001,0.3);
         
         RooRealVar alpha1("alpha1","alpha value CB",1.9,0.1,20);
@@ -162,7 +171,6 @@ void dsphipi_MVAglb()
         
         // Fit a Crystal ball p.d.f to the data
         RooRealVar mass2("mass2","Central value of Gaussian",1.96724,1.85,2.51);
-        //RooRealVar sigma2("sigma2","Width of Gaussian",0.01,0.0001,0.3);
         RooRealVar sigma2("sigma2","Width of Gaussian",0.01,0.0001,0.3);
         
         RooRealVar alpha2("alpha2","alpha value CB",1.9,0.1,20);
@@ -227,7 +235,7 @@ void dsphipi_MVAglb()
             //simPdf.paramOn(frame,Layout(0.12, 0.4, 0.9));
             frame->Draw();
             
-            //add Lumi and Chi2 to plot
+            //add Lumi to plot
             std::stringstream stream_lumi;
             stream_lumi << std::fixed << std::setprecision(1) << lumi_full;
             TString strLumi = stream_lumi.str();
@@ -236,8 +244,8 @@ void dsphipi_MVAglb()
             text_lumi->SetNDC(kTRUE);
             text_lumi->Draw("same");
             
+            //add Chi2 to plot
             cout<<"frame->chiSquare() "<<frame->chiSquare("model_"+category, "data_"+category, r->floatParsFinal().getSize())<<endl;
-            
             Double_t Chi2 = frame->chiSquare("model_"+category, "data_"+category, r->floatParsFinal().getSize());
             std::stringstream stream_chi2;
             stream_chi2 << std::fixed << std::setprecision(2) << Chi2;
@@ -247,13 +255,21 @@ void dsphipi_MVAglb()
             text_chi2->SetTextSize(0.04);
             text_chi2->SetNDC(kTRUE);
             text_chi2->Draw("same");
-            
 
+            //add bin to plot
+            TLatex* bin_label = new TLatex(0.20,0.64, bdt_cutlabels[i]+", "+eta_region);
+            bin_label->SetNDC(kTRUE);
+            bin_label->SetTextSize(0.04);
+            bin_label->SetNDC(kTRUE);
+            bin_label->Draw("same");
+            
+            //add CMS label to plot
             TLatex* cmslabel = new TLatex(0.20,0.81, "#bf{CMS Preliminary}");
             cmslabel->SetNDC(kTRUE);
             cmslabel->Draw("same");
 
-            fout->WriteObject(c5,category);
+            //save plot
+            fout->WriteObject(c5,category+"_"+eta_region);
             c5->SaveAs("plots_MVAcut/dsphipi_fit_perMVA_new"+category+"_"+eta_region+".png");
 
             //fraction of total events in 1.93,2.01 (n_signal_region_events/n_total_events)
@@ -280,7 +296,7 @@ void dsphipi_MVAglb()
         h_tripletmass_mc_full->Fit("f1", "R");
         f1->Draw("same");
         c3->Update();
-        fout->WriteObject(c3,"3glb_invmass_mc");
+        fout->WriteObject(c3,"mc_"+eta_region);
         //Integrals MC
         Double_t n_mc_peak = f1->Integral(1.93, 2.01) / h_tripletmass_mc_full->Integral(h_tripletmass_mc_full->FindFixBin(1.93),h_tripletmass_mc_full->FindFixBin(2.01),"width") * h_tripletmass_mc_full->Integral(h_tripletmass_mc_full->FindFixBin(1.93),h_tripletmass_mc_full->FindFixBin(2.01));
 
@@ -321,7 +337,7 @@ void dsphipi_MVAglb()
         cout << "NDOF = " << n_bins << "-" <<r_full->floatParsFinal().getSize()<<" = "<<NDOF<<endl;
         cout << "chi2.getVal()/NDOF = " << chi2.getVal()/NDOF << endl ;
             
-        //add Lumi and Chi2 to plot
+        //add Lumi to plot
         std::stringstream stream_lumi;
         stream_lumi << std::fixed << std::setprecision(1) << lumi_full;
         TString strLumi = stream_lumi.str();
@@ -330,6 +346,7 @@ void dsphipi_MVAglb()
         text_lumi->SetNDC(kTRUE);
         text_lumi->Draw("same");
 
+        //add Chi2 to plot
         Double_t Chi2 = chi2.getVal()/NDOF;
         std::stringstream stream_chi2;
         stream_chi2 << std::fixed << std::setprecision(2) << Chi2;
@@ -337,11 +354,17 @@ void dsphipi_MVAglb()
         TString chi2tstring = "\\chi^{2}\\text{/NDOF} = "+strChi2;
         TLatex* text_chi2 = new TLatex(0.20,0.74, chi2tstring);
 
+        //add bin to plot
+        TLatex* bin_label = new TLatex(0.20,0.64, eta_region);
+        bin_label->SetNDC(kTRUE);
+        bin_label->Draw("same");
+
+        //add CMS label to plot
         TLatex* cmslabel = new TLatex(0.20,0.81, "#bf{CMS Preliminary}");
         cmslabel->SetNDC(kTRUE);
         cmslabel->Draw("same");
 
-        fout->WriteObject(c5,"full");
+        fout->WriteObject(c5,"full_"+eta_region);
         c5->SaveAs("plots_MVAcut/dsphipi_fit_perMVA_new_full_"+eta_region+".png");
 
         //Integrals data
@@ -377,27 +400,29 @@ void dsphipi_MVAglb()
             Dsyield_MC[i] = SF_total*h_tripletmass_mc[i]->GetEntries()*lumi_full*xsection_mc*BR/N_MC;
             Dsyield_MC_err[i] = sqrt(SF_total*h_tripletmass_mc[i]->GetEntries())*(lumi_full*xsection_mc*BR/N_MC); 
 
-            cout<<"\n"<<bdt_cutlist[i]<<" lumi="<<lumi_full<<endl;
+            cout<<"\n"<<bdt_cutlabels[i]<<" lumi="<<lumi_full<<endl;
             cout<<"=================\noverall data/MC scale factor:"<<endl;
             cout<<"data: "<<Dsyield_data[i]<<" +- "<<Dsyield_data_err[i]<<"\n";
             cout<<"MC: "<<Dsyield_MC[i]<<" +- "<<Dsyield_MC_err[i]<<endl;
             double SF = Dsyield_data[i]/Dsyield_MC[i];
             double SF_err = sqrt(pow((Dsyield_data_err[i]/Dsyield_MC[i]),2.0) + pow((Dsyield_data[i]/(Dsyield_MC[i]*Dsyield_MC[i]))*Dsyield_MC_err[i],2.0));
             cout<<"scale factor: "<<SF<<" +- "<<SF_err<<endl;
+            SF_mva->SetBinContent(i+1,j+1,SF);
+            SF_mva->SetBinError(i+1,j+1,SF_err);
             if(j==0){ //barrel
               SF_mva1->SetBinContent(i+1,SF);
-              SF_mva1->SetBinError(i,SF_err);
+              SF_mva1->SetBinError(i+1,SF_err);
             }
             else if(j==1){ //endcap
               SF_mva2->SetBinContent(i+1,SF);
-              SF_mva2->SetBinError(i,SF_err);
+              SF_mva2->SetBinError(i+1,SF_err);
             }
         }
     }
     fout->cd();
     fout->WriteObject(SF_mva1,"SF_mva1");
     fout->WriteObject(SF_mva2,"SF_mva2");
-    //SF_eta_mva->Write();
+    fout->WriteObject(SF_mva,"SF_mva");
     fout->Close();
     
     return;
