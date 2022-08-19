@@ -92,7 +92,7 @@ void dsphipi_MVAglb()
     Double_t lumi_full = 37.9; //fb
     TString run_lable = "2017";
     Double_t xsection_mc = 1.06e10; //Ds Production Cross section
-    int N_MC = 1479233;  //Total number of events in MC sample
+    int N_MC = 2440762;  //Total number of events in MC sample
     Double_t BR = 1.29e-5;  //Branching ratio Ds to Phi Pi
 
     //loop on eta regions
@@ -172,8 +172,8 @@ void dsphipi_MVAglb()
         // Fit an exponential to the background
         RooRealVar a("a", "a", -5, -30, 5.0);
         RooExponential bg_exp("bg_exp", "bg_exp", x, a);
-        //bg_exp.fitTo(dh, Range("R3,R4,R5"));
-        bg_exp.fitTo(dh, Range("R3"));
+        bg_exp.fitTo(dh, Range("R3,R4,R5"));
+        //bg_exp.fitTo(dh, Range("R3"));
 
         // Combine the models
         // relative contributions of background and signal will depend on category
