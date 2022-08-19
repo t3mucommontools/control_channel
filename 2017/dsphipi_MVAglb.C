@@ -35,10 +35,10 @@ void dsphipi_MVAglb()
 
     //first step: set optimal binning for MVA score to cut on
     TH1F *h_MVAmu2_prelim;
-    TString binning_MVA = "(50, 0.1, 0.8)";
+    TString binning_MVA = "(80, 0.1, 0.8)";
     tin->Draw("MVA_glbmu2>>h_MVAmu2_prelim"+binning_MVA, "("+common_cut+")");
     h_MVAmu2_prelim = (TH1F *)gDirectory->Get("h_MVAmu2_prelim");
-    Int_t nbins = 8;
+    Int_t nbins = 10;
     Double_t edges[nbins+1];
     TString edges_s[nbins+1];
     Double_t proba[nbins+1];
@@ -96,8 +96,8 @@ void dsphipi_MVAglb()
 
     //binning and normalisation quantities
     Double_t events_SB = 0;
-    TString binning_mass = "(62, 1.72, 2.01)";
-    Int_t n_bins = 62;
+    TString binning_mass = "(58, 1.72, 2.01)";
+    Int_t n_bins = 58;
 	
     Double_t lumi_full = 37.9; //fb
     TString run_lable = "2017";
@@ -111,7 +111,7 @@ void dsphipi_MVAglb()
         TString eta_region = eta_regions[j];
 
         //event selection, mass cuts and eta region
-        TString invmass_all_data  = "puFactor*(tripletMass<2.01 && tripletMass>1.62 && "+common_cut+eta_cut+" && isMC==0";
+        TString invmass_all_data  = "puFactor*(tripletMass<2.01 && tripletMass>1.72 && "+common_cut+eta_cut+" && isMC==0";
         TString invmass_peak_MC   = "puFactor*(tripletMass<2.01 && tripletMass>1.93 && "+common_cut+eta_cut+" && isMC==1";
 
         //Fill histograms for each MVA cut
@@ -156,30 +156,35 @@ void dsphipi_MVAglb()
 
         // Construct a simultaneous pdf using category "c" as index
         RooSimultaneous simPdf("simPdf", "simultaneous pdf", c);
-        
+       
+        x.setRange("R1",1.83,1.89); //first peak D+(1.87GeV)
+        x.setRange("R2",1.93,2.01); //second peak Ds(1.97) 
         x.setRange("R3",1.72,1.82); //background    
-        x.setRange("R4",1.90,1.925); //background    
+        x.setRange("R4",1.90,1.92); //background    
         x.setRange("R5",2.0,2.01); //background 
         
         // Fit a Crystal ball p.d.f to the data
-        RooRealVar mass1("mass1","Central value of Gaussian",1.86774,1.75,2.01);
-        RooRealVar sigma1("sigma1","Width of Gaussian",0.01,0.0001,0.3);
+        RooRealVar mass1("mass1","Central value of Gaussian",1.87,1.86,1.88);
+        RooRealVar sigma1("sigma1","Width of Gaussian",0.01,0.0001,0.6);
         
-        RooRealVar alpha1("alpha1","alpha value CB",1.9,0.1,20);
-        RooRealVar n1("n1", "n1", 2, 0, 10);
+        RooRealVar alpha1("alpha1","alpha value CB",1.0,0.01,10);
+        RooRealVar n1("n1", "n1", 2.0, 0.5, 10);
         RooCBShape signal_CB1("cb1", "The signal distribution", x, mass1, sigma1, alpha1, n1); 
+        RooGaussian signal_G1("g1", "The signal distribution", x, mass1, sigma1); 
         
         // Fit a Crystal ball p.d.f to the data
-        RooRealVar mass2("mass2","Central value of Gaussian",1.96724,1.85,2.51);
-        RooRealVar sigma2("sigma2","Width of Gaussian",0.01,0.0001,0.3);
+        RooRealVar mass2("mass2","Central value of Gaussian",1.965,1.955,1.975);
+        RooRealVar sigma2("sigma2","Width of Gaussian",0.01,0.0001,0.6);
         
-        RooRealVar alpha2("alpha2","alpha value CB",1.9,0.1,20);
-        RooRealVar n2("n2", "n2", 2, 0, 20);
+        RooRealVar alpha2("alpha2","alpha value CB",1.0,0.1,10);
+        RooRealVar n2("n2", "n2", 2.0, 0.5, 10);
         RooCBShape signal_CB2("cb2", "The signal distribution", x, mass2, sigma2, alpha2, n2); 
+        RooGaussian signal_G2("g2", "The signal distribution", x, mass2, sigma2); 
            
         // Fit an exponential to the background
-        RooRealVar a("a", "a", -5, -30, 5.0);
+        RooRealVar a("a", "a", -2, -10, 0.0);
         RooExponential bg_exp("bg_exp", "bg_exp", x, a);
+        //bg_exp.fitTo(dh, Range("R3,R4"));
         bg_exp.fitTo(dh, Range("R3,R4,R5"));
         //bg_exp.fitTo(dh, Range("R3"));
 
@@ -194,10 +199,11 @@ void dsphipi_MVAglb()
         for(int i = 0; i<ncut; i++){
             TString category = "cat"+std::to_string(i);
             Int_t entries = h_tripletmass[i]->GetEntries(); //reference for normalisation variables
-            nsig2[i] = new RooRealVar("nsig2_"+category,"#signal2 events",int(entries/4),5,int(entries/2)); 
-            nsig1[i] = new RooRealVar("nsig1_"+category,"#signal1 events",int(entries/4),5,int(entries/2)); 
+            nsig2[i] = new RooRealVar("nsig2_"+category,"#signal2 events",int(entries/6),5,int(entries/2)); 
+            nsig1[i] = new RooRealVar("nsig1_"+category,"#signal1 events",int(entries/6),5,int(entries/2)); 
             nbkg[i] = new RooRealVar("nbkg_"+category,"#background events",int(entries/2),5,entries);
-            model[i] = new RooAddPdf("model_"+category,"g+a",RooArgList(signal_CB1,signal_CB2,bg_exp),RooArgList(*nsig1[i],*nsig2[i],*nbkg[i]));
+            //model[i] = new RooAddPdf("model_"+category,"g+a",RooArgList(signal_CB1,signal_CB2,bg_exp),RooArgList(*nsig1[i],*nsig2[i],*nbkg[i]));
+            model[i] = new RooAddPdf("model_"+category,"g+a",RooArgList(signal_G1,signal_G2,bg_exp),RooArgList(*nsig1[i],*nsig2[i],*nbkg[i]));
             simPdf.addPdf(*model[i], category);
         }
         // P e r f o r m   a   s i m u l t a n e o u s   f i t
@@ -211,10 +217,6 @@ void dsphipi_MVAglb()
         c5->SetLeftMargin(0.15);
         c5->Update();
 
-        /*
-        x.setRange("signal",1.93,2.01);
-        x.setRange("sideband",1.72,1.8);
-        */
         x.setRange("signal",1.93,2.01);
         x.setRange("sideband",1.72,1.8);
 
@@ -228,10 +230,8 @@ void dsphipi_MVAglb()
             dh.plotOn(frame, Cut("c==c::"+category), DataError(RooAbsData::SumW2), Name("data_"+category));
             simPdf.plotOn(frame, Slice(c, category), ProjWData(c, dh), Name("model_"+category), Range("chi2"));
             simPdf.plotOn(frame, Slice(c, category), Components(bg_exp), LineColor(kGreen), LineStyle(kDashed), ProjWData(c, dh));
-            //simPdf.plotOn(frame, Slice(c, category), Components(signal_CB2, signal_CB1), LineColor(kRed), LineStyle(kDashed), ProjWData(c, dh));
-            //simPdf.plotOn(frame, Slice(c, category), Components(RooArgSet(signal_CB2, signal_CB1)), LineColor(kRed), LineStyle(kDashed), ProjWData(c, dh));
-            simPdf.plotOn(frame, Slice(c, category), Components(RooArgSet(signal_CB1)), LineColor(kRed), LineStyle(kDashed), ProjWData(c, dh));
-            simPdf.plotOn(frame, Slice(c, category), Components(RooArgSet(signal_CB2)), LineColor(kPink), LineStyle(kDashed), ProjWData(c, dh));
+            simPdf.plotOn(frame, Slice(c, category), Components(RooArgSet(signal_G1)), LineColor(kRed), LineStyle(kDashed), ProjWData(c, dh));
+            simPdf.plotOn(frame, Slice(c, category), Components(RooArgSet(signal_G2)), LineColor(kRed), LineStyle(kDashed), ProjWData(c, dh));
             //simPdf.paramOn(frame,Layout(0.12, 0.4, 0.9));
             frame->Draw();
             
@@ -257,11 +257,14 @@ void dsphipi_MVAglb()
             text_chi2->Draw("same");
 
             //add bin to plot
-            TLatex* bin_label = new TLatex(0.20,0.64, bdt_cutlabels[i]+", "+eta_region);
+            TLatex* bin_label = new TLatex(0.20,0.38, "#bf{"+bdt_cutlabels[i]+"}");
+            TLatex* eta_label = new TLatex(0.20,0.34, "#bf{"+eta_region+"}");
             bin_label->SetNDC(kTRUE);
             bin_label->SetTextSize(0.04);
-            bin_label->SetNDC(kTRUE);
             bin_label->Draw("same");
+            eta_label->SetNDC(kTRUE);
+            eta_label->SetTextSize(0.04);
+            eta_label->Draw("same");
             
             //add CMS label to plot
             TLatex* cmslabel = new TLatex(0.20,0.81, "#bf{CMS Preliminary}");
@@ -356,6 +359,7 @@ void dsphipi_MVAglb()
 
         //add bin to plot
         TLatex* bin_label = new TLatex(0.20,0.64, eta_region);
+        bin_label->SetTextSize(0.05);
         bin_label->SetNDC(kTRUE);
         bin_label->Draw("same");
 
@@ -424,7 +428,7 @@ void dsphipi_MVAglb()
     fout->WriteObject(SF_mva2,"SF_mva2");
     fout->WriteObject(SF_mva,"SF_mva");
     fout->Close();
-    
+
     return;
  
 }
