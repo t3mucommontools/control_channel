@@ -246,6 +246,7 @@ void dsphipi_MVAglb()
             RooPlot* frame = x.frame(Title(" "));
             dh.plotOn(frame, Cut("c==c::"+category), DataError(RooAbsData::SumW2), Name("data_"+category));
             simPdf.plotOn(frame, Slice(c, category), ProjWData(c, dh), Name("model_"+category), Range("chi2"));
+            simPdf.plotOn(frame, Slice(c, category), LineColor(kBlue), ProjWData(c, dh));
             simPdf.plotOn(frame, Slice(c, category), Components(bg_exp), LineColor(kGreen), LineStyle(kDashed), ProjWData(c, dh));
             simPdf.plotOn(frame, Slice(c, category), Components(RooArgSet(signal_G1)), LineColor(kRed), LineStyle(kDashed), ProjWData(c, dh));
             simPdf.plotOn(frame, Slice(c, category), Components(RooArgSet(signal_G2)), LineColor(kRed), LineStyle(kDashed), ProjWData(c, dh));
@@ -542,13 +543,13 @@ void dsphipi_MVAglb()
         leg->SetBorderSize(0);
         leg->SetTextFont(42);
         leg->SetTextSize(0.040);
-        //leg->SetHeader(varlable, "L");
+        leg->SetHeader(var+" "+eta_region, "L");
         leg->AddEntry(hmc_sgn,"D_{s}#rightarrow#phi(#mu#mu)#pi MC","f");
         leg->AddEntry(hdata_sgn,"data "+run_lable+" (SB subtracted)","f");
         leg->AddEntry(hdata_sgn_plus,"data "+run_lable+" (SB +10\% subt.)","f");
         leg->AddEntry(hdata_sgn_minus,"data "+run_lable+" (SB -10\% subt.)","f");
         leg->Draw();
-        bin_label->Draw();
+
         c2->Update();
     
         fout->cd();
@@ -584,7 +585,6 @@ void dsphipi_MVAglb()
         hdata_sgn_minus->Draw("hist same");
         c6->Update();
         leg->Draw();
-        bin_label->Draw();
         c6->Update();
     
         hmc_sgn_weighted->SetStats(0);
