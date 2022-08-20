@@ -16,6 +16,27 @@ using namespace RooFit;
 
 //gErrorIgnoreLevel = kFatal;
 
+struct sfMuon{
+   float value=1.0;
+   float error=0.0;
+};
+
+sfMuon GetMuonSF(const TH2F* _h, const double x, const double eta ){
+    sfMuon val;
+    if( x < _h->GetXaxis()->GetXmax() && x > _h->GetXaxis()->GetXmin() &&
+        eta < _h->GetYaxis()->GetXmax() && eta > _h->GetYaxis()->GetXmin()){
+        int ix = _h->GetXaxis()->FindBin(x);
+        int ieta = _h->GetYaxis()->FindBin(std::abs(eta));
+        val.value = _h->GetBinContent(ix,ieta);
+        val.error = _h->GetBinError(ix,ieta);
+        //cout<<"x="<<x<<" y="<<std::abs(eta)<<" ix="<<ix<<" iy="<<ieta<<endl;
+    }else{
+        val.value = 1;
+        val.error = 0;
+    }
+    return val;
+}
+
 void dsphipi_MVAglb() 
 {
     gErrorIgnoreLevel = kInfo;
@@ -38,7 +59,7 @@ void dsphipi_MVAglb()
     TString binning_MVA = "(80, 0.1, 0.8)";
     tin->Draw("MVA_glbmu2>>h_MVAmu2_prelim"+binning_MVA, "("+common_cut+")");
     h_MVAmu2_prelim = (TH1F *)gDirectory->Get("h_MVAmu2_prelim");
-    Int_t nbins = 10;
+    Int_t nbins = 14;
     Double_t edges[nbins+1];
     TString edges_s[nbins+1];
     Double_t proba[nbins+1];
@@ -46,6 +67,7 @@ void dsphipi_MVAglb()
     for (int i=0; i<nbins+1; i++) proba[i] = float(i)/float(nbins);
     h_MVAmu2_prelim->GetQuantiles(nbins+1, edges, proba);
 
+    //edges to string with desired precision
     for (int i=0; i<nbins+1; i++){
         stringstream ss;
         ss << setprecision(3)<< edges[i];
@@ -75,9 +97,9 @@ void dsphipi_MVAglb()
     //to do: add boundaries to MVAmu2 plot
     h_MVAmu2_prelim->Write();
     //output histograms
-    TH1D *SF_mva1 = new TH1D("SF_mva1", "SF vs MVA", ncut, 0.1, 0.8 ) ;
-    TH1D *SF_mva2 = new TH1D("SF_mva2", "SF vs MVA", ncut, 0.1, 0.8 ) ;
-    TH2D *SF_mva  = new TH2D("SF_mva",  "SF vs MVA-eta", ncut, 0.1, 0.8, 2, 0, 2.4) ;
+    TH1F *SF_mva1 = new TH1F("SF_mva1", "SF vs MVA", ncut, edges) ;
+    TH1F *SF_mva2 = new TH1F("SF_mva2", "SF vs MVA", ncut, edges) ;
+    TH2F *SF_mva  = new TH2F("SF_mva",  "SF vs MVA-eta", ncut, edges, 2, 0, 2.4) ;
 
     //yields     
     Double_t Dsyield_data[ncut];
@@ -112,6 +134,8 @@ void dsphipi_MVAglb()
 
         //event selection, mass cuts and eta region
         TString invmass_all_data  = "puFactor*(tripletMass<2.01 && tripletMass>1.72 && "+common_cut+eta_cut+" && isMC==0";
+        TString invmass_SB_data  = "puFactor*(tripletMass<1.82 && tripletMass>1.72 && "+common_cut+eta_cut+" && isMC==0";
+        TString invmass_peak_data  = "puFactor*(tripletMass<2.01 && tripletMass>1.93 && "+common_cut+eta_cut+" && isMC==0";
         TString invmass_peak_MC   = "puFactor*(tripletMass<2.01 && tripletMass>1.93 && "+common_cut+eta_cut+" && isMC==1";
 
         //Fill histograms for each MVA cut
@@ -222,8 +246,6 @@ void dsphipi_MVAglb()
 
         //for each bin: do plot and store integrals:
         for(int i = 0; i<ncut; i++){
-            cout<<"Starting step "<< i <<endl;
-            
             TString category = "cat"+std::to_string(i);
             // Make plot of binned dataset showing Poisson error bars (RooFit default)
             RooPlot* frame = x.frame(Title(" "));
@@ -273,7 +295,7 @@ void dsphipi_MVAglb()
 
             //save plot
             fout->WriteObject(c5,category+"_"+eta_region);
-            c5->SaveAs("plots_MVAcut/dsphipi_fit_perMVA_new"+category+"_"+eta_region+".png");
+            c5->SaveAs("plots_MVAcut/dsphipi_fit_perMVA_"+category+"_"+eta_region+".png");
 
             //fraction of total events in 1.93,2.01 (n_signal_region_events/n_total_events)
             RooAbsReal* fsigregion_model = model[i]->createIntegral(x,NormSet(x),Range("signal")); 
@@ -369,7 +391,7 @@ void dsphipi_MVAglb()
         cmslabel->Draw("same");
 
         fout->WriteObject(c5,"full_"+eta_region);
-        c5->SaveAs("plots_MVAcut/dsphipi_fit_perMVA_new_full_"+eta_region+".png");
+        c5->SaveAs("plots_MVAcut/dsphipi_fit_perMVA_full_"+eta_region+".png");
 
         //Integrals data
         //fraction of total events in 1.93,2.01 (n_signal_region_events/n_total_events)
@@ -422,13 +444,162 @@ void dsphipi_MVAglb()
               SF_mva2->SetBinError(i+1,SF_err);
             }
         }
+   
+        //Control plot
+        TH1F *hdata_bkg      =   new TH1F("hdata_bkg", "hdata_bkg", 80, 0.1, 0.8); //ncut, edges for variable binning
+        TH1F *hdata_bkg_plus =   new TH1F("hdata_bkg_plus", "hdata_bkg_plus", 80, 0.1, 0.8);
+        TH1F *hdata_bkg_minus =  new TH1F("hdata_bkg_minus", "hdata_bkg_minus", 80, 0.1, 0.8);
+        TH1F *hdata_sgn =        new TH1F("hdata_sgn", "hdata_sgn", 80, 0.1, 0.8);
+        TH1F *hdata_sgn_plus =   new TH1F("hdata_sgn_plus", "hdata_sgn_plus", 80, 0.1, 0.8);
+        TH1F *hdata_sgn_minus =  new TH1F("hdata_sgn_minus", "hdata_sgn_minus", 80, 0.1, 0.8);
+        TH1F *hmc_sgn =          new TH1F("hmc_sgn", "hmc_sgn", 80, 0.1, 0.8);
+        TH1F *hmc_sgn_weighted = new TH1F("hmc_weighted", "hmc_sgn_weighted", 80, 0.1, 0.8);
+
+        tin->Draw(var+">>hdata_bkg", invmass_SB_data+")");
+        tin->Draw(var+">>hdata_bkg_plus", invmass_SB_data+")");
+        tin->Draw(var+">>hdata_bkg_minus", invmass_SB_data+")");
+        tin->Draw(var+">>hdata_sgn", invmass_peak_data+")");
+        tin->Draw(var+">>hdata_sgn_plus", invmass_peak_data+")");
+        tin->Draw(var+">>hdata_sgn_minus", invmass_peak_data+")");
+
+        tin->Draw(var+">>hmc_sgn", invmass_peak_MC+")");
+
+        hdata_bkg = (TH1F *)gDirectory->Get("hdata_bkg");
+        hdata_bkg_plus = (TH1F *)gDirectory->Get("hdata_bkg_plus");
+        hdata_bkg_minus = (TH1F *)gDirectory->Get("hdata_bkg_minus");
+        hdata_sgn = (TH1F *)gDirectory->Get("hdata_sgn");
+        hdata_sgn_plus = (TH1F *)gDirectory->Get("hdata_sgn_plus");
+        hdata_sgn_minus = (TH1F *)gDirectory->Get("hdata_sgn_minus");
+        hmc_sgn = (TH1F *)gDirectory->Get("hmc_sgn");
+
+        TCanvas *c2 = new TCanvas("c2","c2",150,10,800,800);
+        gStyle->SetOptTitle(0);
+        gStyle->SetOptStat(0);
+
+        Double_t normMC = hmc_sgn->GetEntries();
+        //Normalizing Monte Carlo 
+        Double_t wNorm = lumi_full*xsection_mc*BR/N_MC;
+        //Double_t wNorm = lumi_full*xsection_mc*BR/N_MC  *  n_mc_peak/hmc_sgn->GetEntries();
+        cout<<"wNorm = lumi_full*xsection_mc*BR/N_MC = "<<wNorm<<endl;
+        hmc_sgn->Scale(wNorm);
+
+        //scaling the SB distribution to number of background events in 1.93,2.01
+        Double_t normSB = hdata_bkg->GetEntries();
+        hdata_bkg->Scale(Bkgyield_data_full/normSB);
+        hdata_bkg_plus->Scale( (Bkgyield_data_full/normSB) * 1.10);
+        hdata_bkg_minus->Scale( (Bkgyield_data_full/normSB) * 0.90);
+
+        cout<<"Entries in  hdata_sgn before SB subtraction "<<hdata_sgn->GetEntries()<<endl;
+        hdata_sgn->Add(hdata_bkg,-1); //subtract h2 from h1 : h1->Add(h2,-1)
+        hdata_sgn_plus->Add(hdata_bkg_plus,-1); //subtract h2 from h1 : h1->Add(h2,-1)
+        hdata_sgn_minus->Add(hdata_bkg_minus,-1); //subtract h2 from h1 : h1->Add(h2,-1)
+
+        //Rescaling to same integral
+        hmc_sgn->Scale( 1.0 / hmc_sgn->Integral());
+        hdata_sgn->Scale( hmc_sgn->Integral()/hdata_sgn->Integral() );
+        hdata_sgn_plus->Scale( hmc_sgn->Integral()/hdata_sgn_plus->Integral() );
+        hdata_sgn_minus->Scale( hmc_sgn->Integral()/hdata_sgn_minus->Integral() );
+
+        //plot makeup
+        double Y_max = std::max(hmc_sgn->GetMaximum(), hdata_sgn->GetMaximum());
+        Y_max = Y_max*1.4;
+        hmc_sgn->GetYaxis()->SetRangeUser(0, Y_max);
+    
+        hmc_sgn->GetYaxis()->SetTitle("a.u.");
+        hmc_sgn->GetYaxis()->SetTitleSize(22);
+        hmc_sgn->GetYaxis()->SetTitleFont(43);
+        hmc_sgn->GetYaxis()->SetTitleOffset(1.7);
+    
+        hmc_sgn->GetXaxis()->SetLabelFont(43); // Absolute font size in pixel (precision 3)
+        hmc_sgn->GetXaxis()->SetTitleOffset(1.5);
+        hmc_sgn->GetXaxis()->SetTitle(var);
+    
+        hmc_sgn->SetLineColor(kBlue);
+        hmc_sgn->SetLineWidth(3);
+        hmc_sgn->SetFillStyle(3004);
+        hmc_sgn->SetFillColor(kBlue);
+        hdata_sgn->SetLineColor(kRed);
+        hdata_sgn->SetLineWidth(3);
+        hdata_sgn->SetFillStyle(3005);
+        hdata_sgn->SetFillColor(kRed);
+    
+        hdata_sgn_plus->SetLineColor(kBlack);
+        hdata_sgn_plus->SetFillStyle(3001);
+        hdata_sgn_plus->SetLineWidth(2);
+        hdata_sgn_plus->SetLineStyle(2);
+    
+        hdata_sgn_minus->SetLineColor(kBlack);
+        hdata_sgn_minus->SetFillStyle(3001);
+        hdata_sgn_minus->SetLineWidth(2);
+        hdata_sgn_minus->SetLineStyle(3);
+ 
+        hmc_sgn->SetTitle(""); // Remove the title
+        hmc_sgn->SetStats(0);
+
+        hmc_sgn->Draw("hist");
+        hdata_sgn->Draw("hist same");
+        hdata_sgn_plus->Draw("hist same");
+        hdata_sgn_minus->Draw("hist same");
+
+        //Double_t x_low = 0.45, x_high = 0.89, y_low = 0.50, y_high = 0.89; //top right 
+        Double_t x_low = 0.12, x_high = 0.57, y_low = 0.50, y_high = 0.89; //top left 
+        TLegend*leg = new TLegend(x_low, y_low, x_high, y_high);
+        leg->SetBorderSize(0);
+        leg->SetTextFont(42);
+        leg->SetTextSize(0.040);
+        //leg->SetHeader(varlable, "L");
+        leg->AddEntry(hmc_sgn,"D_{s}#rightarrow#phi(#mu#mu)#pi MC","f");
+        leg->AddEntry(hdata_sgn,"data "+run_lable+" (SB subtracted)","f");
+        leg->AddEntry(hdata_sgn_plus,"data "+run_lable+" (SB +10\% subt.)","f");
+        leg->AddEntry(hdata_sgn_minus,"data "+run_lable+" (SB -10\% subt.)","f");
+        leg->Draw();
+        c2->Update();
+    
+        fout->cd();
+        fout->WriteObject(c2,var+"_controlplot_before_"+eta_region);
+
+        //weighted MC
+        hmc_sgn_weighted = (TH1F*)hmc_sgn->Clone("hmc_sgn_weighted");
+        int nbinsx = hmc_sgn->GetXaxis()->GetNbins();
+        for(int b=0; b<nbinsx; b++){
+            Double_t mva_h = hmc_sgn->GetBinContent(b+1);
+            Double_t mva_x = ((TAxis*)hmc_sgn->GetXaxis())->GetBinCenter(b+1);
+            sfMuon SF;
+            if(j==0) SF = GetMuonSF(SF_mva, mva_x, 0.6); //barrel
+            else if(j==1) SF = GetMuonSF(SF_mva, mva_x, 1.8); //endcap
+            hmc_sgn_weighted->SetBinContent(b+1, mva_h*SF.value);
+            //cout<<"bin "<<b+1<<" mva_x "<<mva_x<<" SF "<<SF.value<<"+-"<<SF.error<<endl;
+        }
+        //if(j==0) hmc_sgn_weighted->Multiply(SF_mva1);            
+        //else if(j==1) hmc_sgn_weighted->Multiply(SF_mva2);            
+
+        //Rescaling to same integral
+        hmc_sgn_weighted->Scale( 1.0 / hmc_sgn_weighted->Integral());
+        hdata_sgn->Scale( hmc_sgn_weighted->Integral()/hdata_sgn->Integral() );
+        hdata_sgn_plus->Scale( hmc_sgn_weighted->Integral()/hdata_sgn_plus->Integral() );
+        hdata_sgn_minus->Scale( hmc_sgn_weighted->Integral()/hdata_sgn_minus->Integral() );
+        hmc_sgn_weighted->GetYaxis()->SetRangeUser(0, Y_max);
+
+        TCanvas *c6 = new TCanvas("c6","c6",150,10,800,800);
+
+        hmc_sgn_weighted->Draw("hist");
+        hdata_sgn->Draw("hist same");
+        hdata_sgn_plus->Draw("hist same");
+        hdata_sgn_minus->Draw("hist same");
+        c6->Update();
+        leg->Draw();
+        c6->Update();
+    
+        hmc_sgn_weighted->SetStats(0);
+        fout->cd();
+        fout->WriteObject(c6,var+"_controlplot_after_"+eta_region);
+
     }
     fout->cd();
     fout->WriteObject(SF_mva1,"SF_mva1");
     fout->WriteObject(SF_mva2,"SF_mva2");
     fout->WriteObject(SF_mva,"SF_mva");
-    fout->Close();
 
+    fout->Close();
     return;
- 
 }
