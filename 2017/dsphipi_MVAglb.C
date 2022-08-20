@@ -48,7 +48,7 @@ void dsphipi_MVAglb()
     TString var = "MVA_glbmu2";
 
     //IMPORTANT: event selection 
-    TString common_cut = "bs_sv_d2Dsig>2.0 && mu3_pt > 1.2 && " 
+    TString common_cut = "bs_sv_d2Dsig>3.75 && mu3_pt > 1.2 && " 
                          "((mu1_pt>3.5 && mu1_eta<1.2) || (mu1_pt>2.0 && mu1_eta>=1.2 && mu1_eta<=2.4)) && "
                          "((mu2_pt>3.5 && mu2_eta<1.2) || (mu2_pt>2.0 && mu2_eta>=1.2 && mu2_eta<=2.4)) && "
                          "abs(phiMass-1.02)<0.045 && "
@@ -59,7 +59,7 @@ void dsphipi_MVAglb()
     TString binning_MVA = "(80, 0.1, 0.8)";
     tin->Draw("MVA_glbmu2>>h_MVAmu2_prelim"+binning_MVA, "("+common_cut+")");
     h_MVAmu2_prelim = (TH1F *)gDirectory->Get("h_MVAmu2_prelim");
-    Int_t nbins = 14;
+    Int_t nbins = 15;
     Double_t edges[nbins+1];
     TString edges_s[nbins+1];
     Double_t proba[nbins+1];
@@ -542,7 +542,7 @@ void dsphipi_MVAglb()
         hdata_sgn_minus->Draw("hist same");
 
         //Double_t x_low = 0.45, x_high = 0.89, y_low = 0.50, y_high = 0.89; //top right 
-        Double_t x_low = 0.12, x_high = 0.57, y_low = 0.50, y_high = 0.89; //top left 
+        Double_t x_low = 0.12, x_high = 0.57, y_low = 0.45, y_high = 0.89; //top left 
         TLegend*leg = new TLegend(x_low, y_low, x_high, y_high);
         leg->SetBorderSize(0);
         leg->SetTextFont(42);
@@ -553,6 +553,7 @@ void dsphipi_MVAglb()
         leg->AddEntry(hdata_sgn_plus,"data "+run_lable+" (SB +10\% subt.)","f");
         leg->AddEntry(hdata_sgn_minus,"data "+run_lable+" (SB -10\% subt.)","f");
         leg->Draw();
+        bin_label->Draw();
         c2->Update();
     
         fout->cd();
@@ -588,6 +589,7 @@ void dsphipi_MVAglb()
         hdata_sgn_minus->Draw("hist same");
         c6->Update();
         leg->Draw();
+        bin_label->Draw();
         c6->Update();
     
         hmc_sgn_weighted->SetStats(0);
