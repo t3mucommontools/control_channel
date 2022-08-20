@@ -140,13 +140,9 @@ void dsphipi_MVAglb()
 
         //Fill histograms for each MVA cut
         for(int i=0; i<ncut; i++){
-            TString s = std::to_string(i-1);
+            TString s = std::to_string(i);
             
             TString bdt_cut = bdt_cutlist[i];
-            TString bdt_cut_label = bdt_cutlist[i];
-            bdt_cut_label = bdt_cut_label.ReplaceAll(".", "p");
-            bdt_cut_label = bdt_cut_label.ReplaceAll(">", "_");
-            bdt_cut_label = bdt_cut_label.ReplaceAll("<", "_");
         		
             tin->Draw("tripletMass>>h_tripletmass["+s+"]"+binning_mass, invmass_all_data+"&&"+bdt_cut+")");
             h_tripletmass[i]     = (TH1F *)gDirectory->Get("h_tripletmass["+s+"]");
@@ -168,7 +164,6 @@ void dsphipi_MVAglb()
         RooCategory c("c", "c");
         for(int i = 0; i<ncut; i++){
             std::stringstream category;
-            TString s = std::to_string(i);
             category << "cat" <<i;
             //define category
             c.defineType(category.str().c_str());
@@ -542,7 +537,7 @@ void dsphipi_MVAglb()
         hdata_sgn_minus->Draw("hist same");
 
         //Double_t x_low = 0.45, x_high = 0.89, y_low = 0.50, y_high = 0.89; //top right 
-        Double_t x_low = 0.12, x_high = 0.45, y_low = 0.50, y_high = 0.89; //top left 
+        Double_t x_low = 0.12, x_high = 0.45, y_low = 0.45, y_high = 0.89; //top left 
         TLegend*leg = new TLegend(x_low, y_low, x_high, y_high);
         leg->SetBorderSize(0);
         leg->SetTextFont(42);
